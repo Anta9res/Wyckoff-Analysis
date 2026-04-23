@@ -3,6 +3,9 @@ name: Web Quant Jobs
 run-name: Web ${{ inputs.job_kind }} ${{ inputs.request_id }}
 
 on:
+  repository_dispatch:
+    types:
+      - web-quant-job
   workflow_dispatch:
     inputs:
       job_kind:
