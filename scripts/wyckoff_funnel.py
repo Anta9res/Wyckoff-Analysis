@@ -66,7 +66,7 @@ RETRY_BASE_DELAY = float(os.getenv("FUNNEL_RETRY_BASE_DELAY", "1.0"))
 SOCKET_TIMEOUT = int(os.getenv("FUNNEL_SOCKET_TIMEOUT", "20"))
 FETCH_TIMEOUT = int(os.getenv("FUNNEL_FETCH_TIMEOUT", "45"))
 BATCH_TIMEOUT = int(os.getenv("FUNNEL_BATCH_TIMEOUT", "420"))
-BATCH_SIZE = int(os.getenv("FUNNEL_BATCH_SIZE", "250"))
+BATCH_SIZE = int(os.getenv("FUNNEL_BATCH_SIZE", "500"))
 BATCH_SLEEP = float(os.getenv("FUNNEL_BATCH_SLEEP", "2"))
 MAX_WORKERS = int(os.getenv("FUNNEL_MAX_WORKERS", "8"))
 EXECUTOR_MODE = os.getenv("FUNNEL_EXECUTOR_MODE", "process").strip().lower()
@@ -348,9 +348,25 @@ def run_funnel_job(
         print(f"[funnel] 小盘基准加载成功: {SMALLCAP_BENCH_CODE}")
     except Exception as e:
         print(f"[funnel] 小盘基准加载失败 {SMALLCAP_BENCH_CODE}: {e}")
+    # 市值预过滤：仅对满足最小市值门槛的股票拉取日线，大幅减少 API 调用量
+    cap_available = bool(market_cap_map)
+    if cap_available:
+        prefiltered_symbols = [
+            s for s in all_symbols
+            if market_cap_map.get(s, 0.0) >= cfg.min_market_cap_yi
+        ]
+        skipped_by_cap = len(all_symbols) - len(prefiltered_symbols)
+        print(
+            f"[funnel] 市值预过滤：{len(all_symbols)} → {len(prefiltered_symbols)} "
+            f"(跳过 {skipped_by_cap} 只市值 < {cfg.min_market_cap_yi}亿)"
+        )
+    else:
+        prefiltered_symbols = all_symbols
+        print("[funnel] 市值数据不可用，跳过预过滤")
+
     # 并发拉取日线（委托 tools/data_fetcher）
     all_df_map, fetch_stats = fetch_all_ohlcv(
-        symbols=all_symbols,
+        symbols=prefiltered_symbols,
         window=window,
         enforce_target_trade_date=ENFORCE_TARGET_TRADE_DATE,
         batch_size=BATCH_SIZE,
