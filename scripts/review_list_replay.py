@@ -24,10 +24,9 @@ from core.funnel_pipeline import TRIGGER_LABELS, run_funnel_job
 from utils.feishu import send_feishu_notification
 
 
-def _is_main_or_chinext(code: str) -> bool:
-    return str(code).startswith(
-        ("600", "601", "603", "605", "000", "001", "002", "003", "300", "301")
-    )
+def _is_main_board(code: str) -> bool:
+    """仅包含上证+沪深主板，排除创业板(300/301)、科创板(688)、北交所(430/830)"""
+    return str(code).startswith(("600", "601", "603", "605", "000", "001", "002", "003"))
 
 
 
@@ -50,8 +49,8 @@ def _explain_l1_fail(
     df_map: dict[str, pd.DataFrame],
 ) -> str:
     name = str(name_map.get(code, ""))
-    if not _is_main_or_chinext(code):
-        return "非主板/创业板代码"
+    if not _is_main_board(code):
+        return "非主板(仅保留上证+沪深)"
     if "ST" in name.upper():
         return "ST股票"
     if market_cap_map:
@@ -118,7 +117,7 @@ def _find_big_gainers(
     """找出当日涨幅 >= threshold% 的主板+创业板非ST股票。"""
     codes: list[str] = []
     for code, df in df_map.items():
-        if not _is_main_or_chinext(code):
+        if not _is_main_board(code):
             continue
         if "ST" in str(name_map.get(code, "")).upper():
             continue

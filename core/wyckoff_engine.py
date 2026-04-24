@@ -311,10 +311,9 @@ def resolve_ai_candidate_policy(
 # Layer 1: 剥离垃圾
 
 
-def _is_main_or_chinext(code: str) -> bool:
-    return code.startswith(
-        ("600", "601", "603", "605", "000", "001", "002", "003", "300", "301")
-    )
+def _is_main_board(code: str) -> bool:
+    """仅包含上证+沪深主板，排除创业板(300/301)、科创板(688)、北交所(430/830)"""
+    return code.startswith(("600", "601", "603", "605", "000", "001", "002", "003"))
 
 
 def layer1_filter(
@@ -337,7 +336,7 @@ def layer1_filter(
     l1_roe_negative = 0
     l1_high_debt = 0
     for sym in symbols:
-        if not _is_main_or_chinext(sym):
+        if not _is_main_board(sym):
             continue
         name = name_map.get(sym, "")
         if "ST" in name.upper():
